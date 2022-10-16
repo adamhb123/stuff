@@ -154,13 +154,13 @@ def get_submitters(arguments = None):
         aggregation = {'$match': _create_filters(arguments)} + aggregation
     return (game['_id'] for game in _items.aggregate(aggregation))
 
-def insert_game(game, submitter, update = False):
+def insert_game(game, submitter, update = False, update_name = None):
     del game['image']
     game['new'] = True
     game['sort_name'] = _sub_regex.sub('', game['name'])
     game['submitter'] = submitter
     if update:
-        requests = [ReplaceOne({"name" : game['name']},  game)]
+        requests = [ReplaceOne({"name" : update_name},  game)]
     else:
         requests = [InsertOne(game)]
     games = list(_items.find().sort([('_id', -1)]).limit(10))
