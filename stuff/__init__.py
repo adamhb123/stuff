@@ -162,13 +162,14 @@ def submit():
 @app.route('/edit/<item_name>', methods = ['GET', 'POST'])
 @_auth.oidc_auth('default')
 def edit(item_name):
+    old_item = get_game(item_name)
     if request.method == 'GET':
         print('chom!!!')
         return render_template(
             'submit.html',
             form = Game(session['userinfo']['preferred_username']),
             game_names = get_game_names(), **_get_template_variables(),
-            item = get_game(item_name)
+            item = old_item 
         )
     game = EditGame()
     if not game.validate():
@@ -184,11 +185,20 @@ def edit(item_name):
     game = {k: v.strip() if type(v) == str and k != 'info' else v for k,v in game.items()}
     if game['image']:
         _s3.upload_fileobj(
-            game['image'], environ['S3_BUCKET'], game['name'] + '.jpg',
+            game['image'], environ['S3_BUCKET'],
+            f'{game["name"]}.jpg',
             ExtraArgs = {
                 'ACL': 'public-read', 'ContentType': game['image'].content_type
             }
         )
-    insert_game(game, session['userinfo']['preferred_username'], update = True)
+    if old_item['name'] != game['name']:
+        copy_source = {'Bucket': environ['S3_BUCKET'], 'Key': f'{old_item["name"]}.jpg'}
+        _s3.copy_object(Bucket = environ['S3_BUCKET'], CopySource = copy_source, Key = f'{game["name"]}.jpg', ACL = 'public-read')
+        _s3.delete_object(Bucket = environ['S3_BUCKET'], Key = f'{old_item["name"]}.jpg')
+
+        #_s3.Object(environ['S3_BUCKET'],f'{game["name"]}.jpg').copy_from(CopySource=f'{environ["S3_BUCKET"]}/{old_item["name"]}')
+        #_s3.Object(environ['S3_BUCKET'],f'{old_item["name"]}.jpg').delete()
+
+    insert_game(game, session['userinfo']['preferred_username'], update = True, update_name = old_item['name'])
     flash('Game successfully submitted.')
     return redirect('/')
