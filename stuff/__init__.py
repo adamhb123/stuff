@@ -156,7 +156,7 @@ def submit():
         }
     )
     insert_game(game, session['userinfo']['preferred_username'])
-    flash('Game successfully submitted.')
+    flash('Stuff successfully submitted, thanks!')
     return redirect('/')
 
 @app.route('/edit/<item_name>', methods = ['GET', 'POST'])
