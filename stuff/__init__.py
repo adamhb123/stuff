@@ -6,7 +6,7 @@ from flask_pyoidc.flask_pyoidc import OIDCAuthentication
 from boto3 import client
 from stuff.auth import requirequartermaster, require_read_key
 from stuff.database import *
-from stuff.game import Game, EditGame
+from stuff.stuff import Item, EditItem
 
 app = Flask(__name__)
 app.config.update(
@@ -79,7 +79,7 @@ def api_submitters():
 @app.route('/delete/<game_name>', methods = ['POST'])
 @_auth.oidc_auth('default')
 def delete(game_name):
-    if not delete_game(game_name, session['userinfo']['preferred_username']):
+    if not delete_item(game_name, session['userinfo']['preferred_username']):
         abort(404)
     return redirect('/')
 
@@ -102,11 +102,11 @@ def index():
 @app.route('/game/<game_name>')
 @_auth.oidc_auth('default')
 def game(game_name):
-    g = get_game(game_name)
+    g = get_item(game_name)
     if not g:
         abort(404)
     return render_template(
-        'game.html', expansions = list(get_game_names(g['name'])), game = g,
+        'game.html', expansions = list(get_item_names(g['name'])), game = g,
         **_get_template_variables()
     )
 
@@ -135,15 +135,15 @@ def submit():
     if request.method == 'GET':
         return render_template(
             'submit.html',
-            form = Game(session['userinfo']['preferred_username']),
-            game_names = get_game_names(), **_get_template_variables()
+            form = Item(session['userinfo']['preferred_username']),
+            game_names = get_item_names(), **_get_template_variables()
         )
-    game = Game()
+    game = Item()
     if not game.validate():
         return render_template(
             'submit.html',
             error = next(iter(game.errors.values()))[0], form = game,
-            game_names = get_game_names(), **_get_template_variables()
+            game_names = get_item_names(), **_get_template_variables()
         )
     game = game.data
     raw_info = game['info']
@@ -155,31 +155,31 @@ def submit():
             'ACL': 'public-read', 'ContentType': game['image'].content_type
         }
     )
-    insert_game(game, session['userinfo']['preferred_username'])
+    insert_item(game, session['userinfo']['preferred_username'])
     flash('Stuff successfully submitted, thanks!')
     return redirect('/')
 
 @app.route('/edit/<item_name>', methods = ['GET', 'POST'])
 @_auth.oidc_auth('default')
 def edit(item_name):
-    old_item = get_game(item_name)
+    old_item = get_item(item_name)
     if request.method == 'GET':
         print('chom!!!')
         return render_template(
             'submit.html',
-            form = Game(session['userinfo']['preferred_username']),
-            game_names = get_game_names(), **_get_template_variables(),
+            form = Item(session['userinfo']['preferred_username']),
+            game_names = get_item_names(), **_get_template_variables(),
             item = old_item 
         )
-    game = EditGame()
+    game = EditItem()
     if not game.validate():
         return render_template(
             'submit.html',
             error = next(iter(game.errors.values()))[0],
             form = game,
-            game_names = get_game_names(), 
+            game_names = get_item_names(), 
             **_get_template_variables(),
-            item = get_game(item_name)
+            item = get_item(item_name)
         )
     game = game.data
     game = {k: v.strip() if type(v) == str and k != 'info' else v for k,v in game.items()}
@@ -199,6 +199,6 @@ def edit(item_name):
         #_s3.Object(environ['S3_BUCKET'],f'{game["name"]}.jpg').copy_from(CopySource=f'{environ["S3_BUCKET"]}/{old_item["name"]}')
         #_s3.Object(environ['S3_BUCKET'],f'{old_item["name"]}.jpg').delete()
 
-    insert_game(game, session['userinfo']['preferred_username'], update = True, update_name = old_item['name'])
+    insert_item(game, session['userinfo']['preferred_username'], update = True, update_name = old_item['name'])
     flash('Game successfully submitted.')
     return redirect('/')
