@@ -12,8 +12,8 @@ def _validate_link(form, field):
         raise ValidationError('URL is unreachable')
 
 def _validate_name(form, field):
-    from stuff.database import game_exists
-    if game_exists(field.data):
+    from stuff.database import item_exists
+    if item_exists(field.data):
         raise ValidationError(f'"{field.data}" already exists')
 
 def _validate_owner(form, field):
@@ -21,7 +21,7 @@ def _validate_owner(form, field):
     if not is_quartermaster(session['userinfo']['preferred_username']) and field.data not in ['CSH', session['userinfo']['preferred_username']]:
         raise ValidationError('Only quartermasters can enter any owner')
 
-class Game(FlaskForm):
+class Item(FlaskForm):
 
     image = FileField('image', validators = [
         FileRequired(), FileAllowed(['jpg'])
@@ -47,7 +47,7 @@ class Game(FlaskForm):
             return False
         return True
 
-class EditGame(Game):
+class EditItem(Item):
     image = FileField('image', validators = [FileAllowed(['jpg'])])
 
     name = StringField('name', validators = [DataRequired()])

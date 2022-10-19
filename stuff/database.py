@@ -71,11 +71,11 @@ def _create_sort(arguments, **kwargs):
     except:
         return kwargs
 
-def delete_game(name, submitter):
-    game = _items.find_one({'name': name})
-    if not game or (not is_quartermaster(submitter) and submitter != game['submitter']):
+def delete_item(name, submitter):
+    item = _items.find_one({'name': name})
+    if not item or (not is_quartermaster(submitter) and submitter != item['submitter']):
         return False
-    _deleted.insert_one(game)
+    _deleted.insert_one(item)
     _items.delete_one({'name': name})
     try:
         id = list(_items.find().sort([('_id', -1)]).limit(10))[-1]['_id']
@@ -84,7 +84,7 @@ def delete_game(name, submitter):
         pass
     return True
 
-def game_exists(name):
+def item_exists(name):
     return _items.count_documents({'name': compile(f'^{escape(name)}$', I)})
 
 def generate_api_key():
@@ -98,11 +98,11 @@ def get_api_keys():
 def get_count(arguments):
     return _items.count_documents(_create_filters(arguments))
 
-def get_game(name):
+def get_item(name):
     return _items.find_one({'name': name})
 
-def get_game_names(expansion = None):
-    return (game['name'] for game in _items.find(
+def get_item_names(expansion = None):
+    return (item['name'] for item in _items.find(
         {'expansion': expansion} if expansion else {},
         {'_id': False, 'name': True}
     ).sort([('sort_name', 1)]))
@@ -125,7 +125,7 @@ def get_owners(arguments = None):
     aggregation = [{'$group': {'_id': '$owner'}}, {'$sort': {'_id': 1}}]
     if arguments:
         aggregation = {'$match': _create_filters(arguments)} + aggregation
-    return (game['_id'] for game in _items.aggregate(aggregation))
+    return (item['_id'] for item in _items.aggregate(aggregation))
 
 def get_players():
     try:
@@ -152,20 +152,20 @@ def get_submitters(arguments = None):
     aggregation = [{'$group': {'_id': '$submitter'}}, {'$sort': {'_id': 1}}]
     if arguments:
         aggregation = {'$match': _create_filters(arguments)} + aggregation
-    return (game['_id'] for game in _items.aggregate(aggregation))
+    return (item['_id'] for item in _items.aggregate(aggregation))
 
-def insert_game(game, submitter, update = False, update_name = None):
-    del game['image']
-    game['new'] = True
-    game['sort_name'] = _sub_regex.sub('', game['name'])
-    game['submitter'] = submitter
+def insert_item(item, submitter, update = False, update_name = None):
+    del item['image']
+    item['new'] = True
+    item['sort_name'] = _sub_regex.sub('', item['name'])
+    item['submitter'] = submitter
     if update:
-        requests = [ReplaceOne({"name" : update_name},  game)]
+        requests = [ReplaceOne({"name" : update_name},  item)]
     else:
-        requests = [InsertOne(game)]
-    games = list(_items.find().sort([('_id', -1)]).limit(10))
-    if len(games) == 10:
-        requests.append(UpdateOne({'_id': games[-1]['_id']}, {
+        requests = [InsertOne(item)]
+    stuff = list(_items.find().sort([('_id', -1)]).limit(10))
+    if len(stuff) == 10:
+        requests.append(UpdateOne({'_id': stuff[-1]['_id']}, {
             '$unset': {'new': 1}
         }))
     _items.bulk_write(requests)
