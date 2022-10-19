@@ -76,10 +76,10 @@ def api_random(sample_size = 1):
 def api_submitters():
     return jsonify(list(get_submitters(request.args)))
 
-@app.route('/delete/<game_name>', methods = ['POST'])
+@app.route('/delete/<item_name>', methods = ['POST'])
 @_auth.oidc_auth('default')
-def delete(game_name):
-    if not delete_item(game_name, session['userinfo']['preferred_username']):
+def delete(item_name):
+    if not delete_item(item_name, session['userinfo']['preferred_username']):
         abort(404)
     return redirect('/')
 
@@ -95,18 +95,18 @@ def _get_template_variables():
 @_auth.oidc_auth('default')
 def index():
     return render_template(
-        'index.html', games = get_items(request.args),
+        'index.html', items = get_items(request.args),
         **_get_template_variables()
     )
 
-@app.route('/game/<game_name>')
+@app.route('/item/<item_name>')
 @_auth.oidc_auth('default')
-def game(game_name):
-    g = get_item(game_name)
-    if not g:
+def item(item_name):
+    i = get_item(item_name)
+    if not i:
         abort(404)
     return render_template(
-        'game.html', expansions = list(get_item_names(g['name'])), game = g,
+        'item.html', expansions = list(get_item_names(i['name'])), item = i,
         **_get_template_variables()
     )
 
@@ -114,7 +114,7 @@ def game(game_name):
 @_auth.oidc_auth('default')
 def random():
     return render_template(
-        'index.html', games = get_random_items(request.args, 1),
+        'index.html', items = get_random_items(request.args, 1),
         **_get_template_variables()
     )
 
@@ -123,7 +123,7 @@ def random():
 def submissions():
     return render_template(
         'submissions.html',
-        games = get_submissions(
+        items = get_submissions(
             request.args,
             session['userinfo']['preferred_username']
         ), **_get_template_variables()
@@ -136,26 +136,26 @@ def submit():
         return render_template(
             'submit.html',
             form = Item(session['userinfo']['preferred_username']),
-            game_names = get_item_names(), **_get_template_variables()
+            item_names = get_item_names(), **_get_template_variables()
         )
-    game = Item()
-    if not game.validate():
+    item = Item()
+    if not item.validate():
         return render_template(
             'submit.html',
-            error = next(iter(game.errors.values()))[0], form = game,
-            game_names = get_item_names(), **_get_template_variables()
+            error = next(iter(item.errors.values()))[0], form = item,
+            item_names = get_item_names(), **_get_template_variables()
         )
-    game = game.data
-    raw_info = game['info']
-    game = {k: v.strip() if type(v) == str else v for k,v in game.items()}
-    game['info'] = raw_info
+    item = item.data
+    raw_info = item['info']
+    item = {k: v.strip() if type(v) == str else v for k,v in item.items()}
+    item['info'] = raw_info
     _s3.upload_fileobj(
-        game['image'], environ['S3_BUCKET'], game['name'] + '.jpg',
+        item['image'], environ['S3_BUCKET'], item['name'] + '.jpg',
         ExtraArgs = {
-            'ACL': 'public-read', 'ContentType': game['image'].content_type
+            'ACL': 'public-read', 'ContentType': item['image'].content_type
         }
     )
-    insert_item(game, session['userinfo']['preferred_username'])
+    insert_item(item, session['userinfo']['preferred_username'])
     flash('Stuff successfully submitted, thanks!')
     return redirect('/')
 
@@ -168,37 +168,37 @@ def edit(item_name):
         return render_template(
             'submit.html',
             form = Item(session['userinfo']['preferred_username']),
-            game_names = get_item_names(), **_get_template_variables(),
+            itme_names = get_item_names(), **_get_template_variables(),
             item = old_item 
         )
-    game = EditItem()
-    if not game.validate():
+    item = EditItem()
+    if not item.validate():
         return render_template(
             'submit.html',
-            error = next(iter(game.errors.values()))[0],
-            form = game,
-            game_names = get_item_names(), 
+            error = next(iter(item.errors.values()))[0],
+            form = item,
+            item_names = get_item_names(), 
             **_get_template_variables(),
             item = get_item(item_name)
         )
-    game = game.data
-    game = {k: v.strip() if type(v) == str and k != 'info' else v for k,v in game.items()}
-    if game['image']:
+    item = item.data
+    item = {k: v.strip() if type(v) == str and k != 'info' else v for k,v in item.items()}
+    if item['image']:
         _s3.upload_fileobj(
-            game['image'], environ['S3_BUCKET'],
-            f'{game["name"]}.jpg',
+            item['image'], environ['S3_BUCKET'],
+            f'{item["name"]}.jpg',
             ExtraArgs = {
-                'ACL': 'public-read', 'ContentType': game['image'].content_type
+                'ACL': 'public-read', 'ContentType': item['image'].content_type
             }
         )
-    if old_item['name'] != game['name']:
+    if old_item['name'] != item['name']:
         copy_source = {'Bucket': environ['S3_BUCKET'], 'Key': f'{old_item["name"]}.jpg'}
-        _s3.copy_object(Bucket = environ['S3_BUCKET'], CopySource = copy_source, Key = f'{game["name"]}.jpg', ACL = 'public-read')
+        _s3.copy_object(Bucket = environ['S3_BUCKET'], CopySource = copy_source, Key = f'{item["name"]}.jpg', ACL = 'public-read')
         _s3.delete_object(Bucket = environ['S3_BUCKET'], Key = f'{old_item["name"]}.jpg')
 
-        #_s3.Object(environ['S3_BUCKET'],f'{game["name"]}.jpg').copy_from(CopySource=f'{environ["S3_BUCKET"]}/{old_item["name"]}')
+        #_s3.Object(environ['S3_BUCKET'],f'{item["name"]}.jpg').copy_from(CopySource=f'{environ["S3_BUCKET"]}/{old_item["name"]}')
         #_s3.Object(environ['S3_BUCKET'],f'{old_item["name"]}.jpg').delete()
 
-    insert_item(game, session['userinfo']['preferred_username'], update = True, update_name = old_item['name'])
-    flash('Game successfully submitted.')
+    insert_item(item, session['userinfo']['preferred_username'], update = True, update_name = old_item['name'])
+    flash('Stuff successfully submitted.')
     return redirect('/')
