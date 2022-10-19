@@ -48,7 +48,7 @@
                         {% endfor %}
                     </li>
                     {% endif %}
-                    {% if quartermaster or item.submitter == session['userinfo']['preferred_username'] %}
+                    {% if quartermaster or (is_authenticated and item.submitter == session['userinfo']['preferred_username']) %}
                     <li class="list-inline-item" style="float:right; padding-left:5px;">
                         <form action="/delete/{{item.name}}" method="POST">
                             <button class="btn btn-danger" type="submit">Delete</button>

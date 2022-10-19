@@ -12,6 +12,8 @@ def get_app_envvar(app, var_name):
 def is_app_debugging(app):
     return get_app_envvar(app, 'DEBUG') or get_app_envvar(app, 'TESTING')
 
+def is_authenticated(session):
+    return 'user_info' in session
 
 def verify_environment(print_results=False):
     """

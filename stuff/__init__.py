@@ -91,28 +91,30 @@ def delete(item_name):
 
 def _get_template_variables():
     return {
-        'quartermaster': is_quartermaster(session['userinfo']['preferred_username']),
+        'quartermaster': is_quartermaster(session['userinfo']['preferred_username']) if utility.is_authenticated(session) else False,
         'image_url': environ['IMAGE_URL'],
         'owners': get_owners(), 'players': get_players(),
-        'submitters': get_submitters()
+        'submitters': get_submitters(),
     }
 
 @app.route('/')
-@_auth.oidc_auth('default')
 def index():
     return render_template(
-        'index.html', items = get_items(request.args),
+        'index.html',
+        items = get_items(request.args),
         **_get_template_variables()
     )
 
 @app.route('/item/<item_name>')
-@_auth.oidc_auth('default')
 def item(item_name):
     i = get_item(item_name)
     if not i:
         abort(404)
     return render_template(
-        'item.html', expansions = list(get_item_names(i['name'])), item = i,
+        'item.html',
+        expansions = list(get_item_names(i['name'])),
+        item = i,
+        is_authenticated = utility.is_authenticated(session),
         **_get_template_variables()
     )
 
