@@ -6,7 +6,7 @@ from flask_pyoidc.flask_pyoidc import OIDCAuthentication
 from boto3 import client
 from stuff.auth import requirequartermaster, require_read_key
 from stuff.database import *
-from stuff.stuff import Item, EditItem
+from stuff.item import Item, EditItem
 
 app = Flask(__name__)
 app.config.update(
