@@ -1,4 +1,4 @@
-# [Stuff](https://stuff.apps.okd4.csh.rit.edu)
+# [Stuff](https://stuff.csh.rit.edu)
 
 Stuff is a database you can use to see the physical resources available to you in Computer Science House. You can see what we have available, who is/has been using it, and link to any relevant documentation or projects.
 
